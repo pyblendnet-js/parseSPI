@@ -1,0 +1,39 @@
+﻿<Window x:Class="MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="MainWindow" Height="350" Width="525"
+        Loaded="windowLoaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Label Grid.Column="0" Content="Instruction Set" />
+            <Label Grid.Column="1" Name="instrLbl" Content="" Background="AliceBlue" Width="Auto"/>
+            <Button Grid.Column="2" Content="Browse" Click="instrClick"/>
+        </Grid>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Label Grid.Column="0" Content="Sniffed Source" />
+            <Label Grid.Column="1" Name="sourceLbl" Content="" Background="AliceBlue" Width="Auto"/>
+            <Button Grid.Column="2" Content="Browse" Click="browseClick"/>
+        </Grid>
+        <ScrollViewer Grid.Row="2" >
+            <TextBlock Name="spiData" Height="Auto">
+            </TextBlock>
+        </ScrollViewer>
+        <Button Name="saveAsBtn" Grid.Row="3" Content="Save As" Click="saveAsClick" IsEnabled="false"/>
+    </Grid>
+</Window>
