@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- BK2421 is a 2.4GHz tranciever by Beken
+     Data sheets available:
+     http://www.electrodragon.com/wp-content/uploads/2012/01/Beken-BK2421.pdf
+     http://www.futurlec.com/RFM70.shtml
+     FlushTx and FlushRx commands write 1 byte according to sample code at http://www.hoperf.com/search.asp?sid=4&keyword=RFM70&x=0&y=0
+     and according to MJX F39 Heli Rx sniff
+-->
+<instructions name="BK2421" data_sheet="www.bekencorp.com">
+  <variable Name="register_bank" value="Register_Bank1" values="Register_Bank1,Register_Bank2"/>
+  <command Mnemonic="R_REGISTER" Binary="00" Mask="1F" MinReply="1" MaxReply="5">
+    <field Name="REGISTER ADDRESS" Mask="1F" Map="register_bank"/>
+  </command>
+  <command Mnemonic="W_REGISTER" Binary="20" Mask="1F" MinSend="1" MaxSend="5">
+    <field Name="REGISTER ADDRESS" Mask="1F" Map="register_bank"/>
+  </command>
+  <command Mnemonic="R_RX_PAYLOAD" Binary="61" MinReply="1" MaxReply="32"/>
+  <command Mnemonic="W_TX_PAYLOAD" Binary="A0" MinSend="1" MaxSend="32"/>
+  <command Mnemonic="FLUSH_TX" Binary="E1"/>
+  <command Mnemonic="FLUSH_RX" Binary="E2" MinSend="1" MaxSend="1"/>
+  <command Mnemonic="REUSE_TX_PL" Binary="E3"/>
+  <command Mnemonic="ACTIVATE1" Binary="50,73" />
+  <command Mnemonic="ACTIVATE2" Binary="50,53" Script="toggle register_bank"/>
+  <command Mnemonic="R_RX_PL_WID" Binary="60" MinReply="1"/>
+  <command Mnemonic="W_ACK_PAYLOAD" Binary="A8" Mask="07" MinReply="1" MaxReply="32">
+    <field Name="PIPE" Mask="07" />
+  </command>  
+  <command Mnemonic="W_ACK_PAYLOAD" Binary="A8" Mask="07" MinReply="1" MaxReply="32"/>
+  <command Mnemonic="NOP" Binary="FF"/>
+
+
+  <map Name="Register_Bank1">
+    <loc Mnemonic="CONFIG" Address="00">
+      <bit Mnemonic="MASK_RX_DR" Mask="40"/>
+      <bit Mnemonic="MASK_TX_DS" Mask="20"/>
+      <bit Mnemonic="MASK_MAX_RT" Mask="10"/>
+      <bit Mnemonic="EN_CRC" Mask="08"/>
+      <bit Mnemonic="CRCO" Mask="04"/>
+      <bit Mnemonic="PWR_UP" Mask="02"/>
+      <bit Mnemonic="PRIM_RX" Mask="01"/>
+    </loc>
+    <loc Mnemonic="EN_AA" Address="01" />
+    <loc Mnemonic="EN_RXADDR" Address="02" />
+    <loc Mnemonic="SETUP_AW" Address="03" >
+      <bit Mnemonic="AW" Mask="03" Variable="reg_width" Remap="0,3,4,5"/>
+    </loc>  
+    <loc Mnemonic="SETUP_RETR" Address="04" />
+    <loc Mnemonic="RF_CH" Address="05" />
+    <loc Mnemonic="RF_SETUP" Address="06" />
+    <loc Mnemonic="STATUS" Address="07" />
+    <loc Mnemonic="OBSERVE_TX" Address="08" />
+    <loc Mnemonic="CD" Address="09" />
+    <loc Mnemonic="RX_ADDR_P0" Address="0A" Bytes="reg_width" />
+    <loc Mnemonic="RX_ADDR_P1" Address="0B" Bytes="reg_width" />
+    <loc Mnemonic="RX_ADDR_P2" Address="0C" Bytes="1" />
+    <loc Mnemonic="RX_ADDR_P3" Address="0D" Bytes="1" />
+    <loc Mnemonic="RX_ADDR_P4" Address="0E" Bytes="1" />
+    <loc Mnemonic="RX_ADDR_P5" Address="0F" Bytes="1" />
+    <loc Mnemonic="TX_ADDR" Address="10"  Bytes="reg_width"/>
+    <loc Mnemonic="RX_PW_P0" Address="11" />
+    <loc Mnemonic="RX_PW_P1" Address="12" />
+    <loc Mnemonic="RX_PW_P2" Address="13" />
+    <loc Mnemonic="RX_PW_P3" Address="14" />
+    <loc Mnemonic="RX_PW_P4" Address="15" />
+    <loc Mnemonic="RX_PW_P5" Address="16" />
+    <loc Mnemonic="FIFO_STATUS" Address="17" />
+    <loc Mnemonic="DYNPD" Address="1C" />
+    <loc Mnemonic="FEATURE" Address="1D" />
+  </map>
+  <map Name="Register_Bank2">
+    <loc Mnemonic="MUST_WRITE1" Address="00" Bytes="4"/>
+    <loc Mnemonic="MUST_WRITE2" Address="01" Bytes="4"/>
+    <loc Mnemonic="MUST_WRITE3" Address="02" Bytes="4"/>
+    <loc Mnemonic="MUST_WRITE4" Address="03" Bytes="4"/>
+    <loc Mnemonic="MUST_WRITE5" Address="04" Bytes="4"/>
+    <loc Mnemonic="RSSI" Address="05" Bytes="4"/>
+    <loc Mnemonic="RESERVED_06" Address="06" Bytes="4"/>
+    <loc Mnemonic="RESERVED_07" Address="07" Bytes="4" ReadBytes="1"/>
+    <!-- reading from reg 7 will always be 1 byte regardless of register bank so that bank status can be read -->
+    <loc Mnemonic="CHIP ID" Address="08" Bytes="4"/>
+    <loc Mnemonic="RESERVED_09" Address="09" Bytes="4"/>
+    <loc Mnemonic="RESERVED_0A" Address="0A" Bytes="4"/>
+    <loc Mnemonic="RESERVED_0B" Address="0B" Bytes="4"/>
+    <loc Mnemonic="MUST_WRITE6" Address="0C" Bytes="4"/>
+    <loc Mnemonic="NEW_FEATURE" Address="0D" Bytes="4"/>
+    <loc Mnemonic="RAMP" Address="0E" Bytes="11"/>
+  </map>
+  </instructions>
