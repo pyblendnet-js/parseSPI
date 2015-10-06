@@ -223,6 +223,9 @@ Class MainWindow
                             If bytes = 0 Then
                                 bytes = cmd.minReply
                             End If
+                            If cmd.maxReply > 0 And bytes > cmd.maxReply Then
+                                errorMsg("ExceedMaxReply", "Bytes exceed max reply bytes for " & cmd.Name)
+                            End If
                             For j As Integer = 0 To bytes - 1
                                 Dim oi As Integer = offset + cmd.Binary.Count
                                 If oi >= mb.Count Then
@@ -236,6 +239,9 @@ Class MainWindow
                         ElseIf cmd.minSend > 0 Then   'this is a write style command
                             If bytes = 0 Then  'number of bytes has not been set by the register location
                                 bytes = cmd.minSend  'so use command minimum send
+                            End If
+                            If cmd.maxSend > 0 And bytes > cmd.maxSend Then
+                                errorMsg("ExceedMaxSend", "Bytes exceed max send bytes for " & cmd.Name)
                             End If
                             'gather the values being sent to the slave into an unsigned long number
                             Dim send_bytes As New List(Of Byte)
