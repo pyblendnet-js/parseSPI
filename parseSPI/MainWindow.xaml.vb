@@ -1,12 +1,16 @@
 ﻿Imports System.Windows.Forms  'requires System.Windows.Forms reference
 Imports System.IO
 Imports System.Xml
+Imports System.Threading
+Imports System.ComponentModel
 
 ''' <summary>
 ''' SPI Sniffing Microcontroller Protocol Parser by Robert Parker (c)2015
+''' See https://github.com/pyblendnet-js/parseSPI
 ''' Uses the output captured by version 3.0 of Bus Pirate hardware and BusPirate.SPIsniffer.v0.3 executeable.
 ''' Please see http://dangerousprototypes.com/docs/Bus_Pirate
-''' Output captured with console command SPIsniffer -d COM9 -r 1 > raw.txt
+''' Output captured either with BusPirate.SPIsniffer.v0.3 executeable using console  command SPIsniffer -d COM9 -r 1 > raw.txt
+''' Or with RealTermBusPirateSniff.exe (see https://github.com/pyblendnet-js/RealTermBusPirateSniff )
 ''' </summary>
 ''' <remarks></remarks>
 
@@ -40,6 +44,13 @@ Class MainWindow
     End Sub
 
     Private Sub browseClick(ByVal obj As Object, ByVal e As EventArgs)
+        If scanWorker IsNot Nothing Then
+            If scanWorker.IsBusy Then
+                scanWorker.CancelAsync()
+                browseBtn.Content = "Browse"
+                Return
+            End If
+        End If
         ' Create OpenFileDialog
         Dim dlg As New Microsoft.Win32.OpenFileDialog()
         ' Set filter for file extension and default file extension
@@ -54,73 +65,163 @@ Class MainWindow
             ' Open document
             Dim fid As String = dlg.FileName
             sourceLbl.Content = fid
-            Dim data As String() = File.ReadAllLines(fid)
-            Dim startData As Boolean = False
-            For Each l As String In data
-                If Not startData Then
-                    If l.EndsWith("CKE=1OK") Then
-                        startData = True
+            Select Case typCombo.SelectedIndex
+                Case 0            'buspirate binary spi
+                    convertBusPirateSnifferSource(fid)
+                Case 1            'buspirate binary spi
+                    convertRealTermHexSource(fid)
+            End Select
+            saveAsBtn.IsEnabled = True
+        End If
+    End Sub
+
+    Private Sub convertBusPirateSnifferSource(ByVal fid As String)
+        Dim data As String() = File.ReadAllLines(fid)
+        Dim startData As Boolean = False
+        For Each l As String In data
+            If Not startData Then   'skip all the status messages
+                If l.EndsWith("CKE=1OK") Then  'this is actual 2 messages = CKE=1 clock positive edge and OK
+                    startData = True
+                End If
+            Else
+                Dim pairs As String() = l.Split(" ")
+                Dim singles As New List(Of String)
+                For i As Integer = 0 To pairs.Count Step 2
+                    Dim b As String = pairs(i)
+                    singles.Add(b)
+                Next
+                hexToInstructions(singles.ToArray())
+            End If
+        Next
+    End Sub
+
+    Private Sub convertRealTermHexSource(ByVal fid As String)
+        Dim data As String = File.ReadAllText(fid)
+        Dim singles As New List(Of String)
+        'build hex pairs
+        For i As Integer = 0 To data.Length - 1 Step 2
+            Dim b As String = data(i) & data(i + 1)
+            singles.Add(b)
+        Next
+        hexToInstructions(singles.ToArray())
+    End Sub
+
+    Dim scanPos As Integer = 0
+    Dim scanBuffer As String()
+    Private scanWorker As BackgroundWorker = Nothing
+    Dim dataSync As Boolean = False
+    Dim packet As Boolean = False
+    Dim MOSI As Boolean = False
+    Dim MISO As Boolean = False
+    Dim packet_count As Integer = 0
+    Dim master_bytes As New List(Of Byte)
+    Dim slave_bytes As New List(Of Byte)
+    Dim text_pos As Integer  'used to tab spi parse output
+    Dim pmb As Byte() = {}
+    Dim psb As Byte() = {}
+    Dim packetText As String = ""
+    Dim same_count As Integer = 0
+    Dim scanText As String = ""
+
+    Private Sub hexToInstructions(ByVal hexcode As String())
+        scanBuffer = hexcode
+        scanPos = 0
+        scanText = ""
+        scanWorker = New BackgroundWorker()
+        scanWorker.WorkerReportsProgress = True
+        scanWorker.WorkerSupportsCancellation = True
+        AddHandler scanWorker.RunWorkerCompleted, AddressOf scanFinished
+        AddHandler scanWorker.ProgressChanged, AddressOf scanProgress
+        AddHandler scanWorker.DoWork, AddressOf scanTick
+        scanWorker.RunWorkerAsync()
+        browseBtn.Content = "Cancel"
+    End Sub
+
+    Private Sub scanTick()
+        Dim percent As Integer = 0
+        For i As Integer = 0 To scanBuffer.Count - 1
+            Dim pc As Integer = i * 100 \ scanBuffer.Count
+            If pc <> percent Then
+                percent = pc
+                scanWorker.ReportProgress(percent)
+                Thread.Sleep(100)
+            End If
+            Dim b As String = scanBuffer(i)
+            Try
+                If Not dataSync Then
+                    If b = "01" Then
+                        scanText = "Sync" & vbLf
+                        dataSync = True
+                    Else
+                        scanText &= b & vbLf
                     End If
                 Else
-                    Dim pairs As String() = l.Split(" ")
-                    Dim dataSync As Boolean = False
-                    Dim packet As Boolean = False
-                    Dim MOSI As Boolean = False
-                    Dim MISO As Boolean = False
-                    Dim packet_count As Integer = 0
-                    Dim master_bytes As New List(Of Byte)
-                    Dim slave_bytes As New List(Of Byte)
-                    Dim text_pos As Integer  'used to tab spi parse output
-                    For i As Integer = 0 To pairs.Count Step 2
-                        Dim b As String = pairs(i)
-                        If Not dataSync Then
-                            If b = "01" Then
-                                spiData.Text = "Sync" & vbLf
-                                dataSync = True
-                            Else
-                                spiData.Text &= b & vbLf
-                            End If
-                        Else
-                            If MOSI Then
-                                spiData.Text &= b & " ("
-                                master_bytes.Add(Byte.Parse(b, Globalization.NumberStyles.HexNumber))
-                                MOSI = False
-                                MISO = True
-                            ElseIf MISO Then
-                                spiData.Text &= b & ") "
-                                packet_count += 1
-                                If packet_count > 20 Then
-                                    packet_count = 0
-                                    spiData.Text &= vbLf
-                                End If
-                                slave_bytes.Add(Byte.Parse(b, Globalization.NumberStyles.HexNumber))
-                                MISO = False
-                            End If
-                            Select Case b
-                                Case "5B"
-                                    spiData.Text &= "Packet Start" & vbLf
-                                    text_pos = spiData.Text.Length
-                                    packet = True
-                                    master_bytes.Clear()
-                                    slave_bytes.Clear()
-                                Case "5C"
-                                    MOSI = True
-                                Case "5D"
-                                    'While (spiData.Text.Length < text_pos + 40)
-                                    'spiData.Text &= " "
-                                    'End While
-
-                                    spiData.Text &= parseSpiPacket(master_bytes.ToArray(), slave_bytes.ToArray())
-                                    spiData.Text &= vbLf & "Packet End" & vbLf
-                                    packet = False
-                                    packet_count = 0
-                            End Select
+                    If MOSI Then
+                        packetText &= b & " ("
+                        master_bytes.Add(Byte.Parse(b, Globalization.NumberStyles.HexNumber))
+                        MOSI = False
+                        MISO = True
+                    ElseIf MISO Then
+                        packetText &= b & ") "
+                        packet_count += 1
+                        If packet_count >= 16 Then
+                            packet_count = 0
+                            packetText &= vbLf
                         End If
-                    Next
+                        slave_bytes.Add(Byte.Parse(b, Globalization.NumberStyles.HexNumber))
+                        MISO = False
+                    End If
+                    Select Case b
+                        Case "5B"
+                            'packetText &= "Packet Start" & vbLf
+                            text_pos = scanText.Length
+                            packet = True
+                            master_bytes.Clear()
+                            slave_bytes.Clear()
+                        Case "5C"
+                            MOSI = True
+                        Case "5D"
+                            'While (scanText.Length < text_pos + 40)
+                            'scanText &= " "
+                            'End While
+                            Dim mb As Byte() = master_bytes.ToArray()
+                            Dim sb As Byte() = slave_bytes.ToArray()
+                            Dim same_packet As Boolean = False
+                            If mb.Length = pmb.Length And mb.Length = sb.Length Then
+                                same_packet = True
+                                For mi As Integer = 0 To mb.Length - 1
+                                    If mb(mi) <> pmb(mi) Or sb(mi) <> psb(mi) Then
+                                        same_packet = False
+                                    End If
+                                Next
+                            End If
+                            If same_packet Then
+                                same_count += 1
+                            Else
+                                If same_count > 0 Then
+                                    scanText &= "Last pack repeated " & same_count.ToString() & vbLf
+                                End If
+                                packetText &= parseSpiPacket(mb, sb)
+                                ' need to be able to join incomplete packets and re parse
+                                packetText &= vbLf ' & "Packet End" & vbLf
+                                scanText &= packetText
+                                same_count = 0
+                            End If
+                            pmb = mb
+                            psb = sb
+                            packet = False
+                            packet_count = 0
+                            packetText = ""
+                    End Select
                 End If
-            Next
+            Catch ex As Exception
+                scanText &= "Exception:" & ex.ToString() & vbLf & "  parsing byte " & i & " = " & scanBuffer(i)
+                scanText &= vbLf
+            End Try
+        Next
+        If same_count > 0 Then
+            scanText &= "Last pack repeated " & same_count.ToString() & vbLf
         End If
-        saveAsBtn.IsEnabled = True
     End Sub
 
     Private Function parseSpiPacket(ByVal mb As Byte(), ByVal sb As Byte()) As String
@@ -587,6 +688,23 @@ Class MainWindow
             Dim fid As String = dlg.FileName
             File.WriteAllText(fid, spiData.Text)
         End If
+    End Sub
+
+    Private Sub sourceTypeChange()
+        'not required but here for ease of adding feature
+    End Sub
+
+    Private Sub scanProgress(ByVal sender As Object, ByVal e As ProgressChangedEventArgs)
+        progressBar.Width = Me.ActualWidth * e.ProgressPercentage / 100.0
+        progressLbl.Content = e.ProgressPercentage.ToString() + "%"
+        spiData.Text = scanText
+    End Sub
+
+    Private Sub scanFinished(ByVal sender As Object, ByVal e As RunWorkerCompletedEventArgs)
+        saveAsBtn.IsEnabled = True
+        browseBtn.Content = "Browse"
+        progressBar.Width = 0
+        progressLbl.Content = "100%"
     End Sub
 
 End Class

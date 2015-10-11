@@ -16,7 +16,7 @@
   </command>
   <command Mnemonic="R_RX_PAYLOAD" Binary="61" MinReply="1" MaxReply="32"/>
   <command Mnemonic="W_TX_PAYLOAD" Binary="A0" MinSend="1" MaxSend="32"/>
-  <command Mnemonic="FLUSH_TX" Binary="E1"/>
+  <command Mnemonic="FLUSH_TX" Binary="E1" MinSend="1" MaxSend="1"/>
   <command Mnemonic="FLUSH_RX" Binary="E2" MinSend="1" MaxSend="1"/>
   <command Mnemonic="REUSE_TX_PL" Binary="E3"/>
   <command Mnemonic="ACTIVATE1" Binary="50,73" />

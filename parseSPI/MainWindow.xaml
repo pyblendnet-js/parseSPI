@@ -7,7 +7,9 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"/>
             <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="auto"/>
             <RowDefinition Height="auto"/>
         </Grid.RowDefinitions>
         <Grid Grid.Row="0">
@@ -24,16 +26,33 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Label Grid.Column="0" Content="Capture Type:" />
+            <ComboBox Name="typCombo" Grid.Column="1" SelectionChanged="sourceTypeChange" SelectedIndex="1">
+                <ComboBox.Items>
+                    <ComboBoxItem Content="BusPirate.SPIsniffer.v0.3 (e.g. SPIsniffer -d COM9 -r 1 > raw.txt)" />
+                    <ComboBoxItem Content="RealTerm RawHex (e.g. RealTermBusPirateSniff.exe)" />
+                </ComboBox.Items>
+            </ComboBox>
+        </Grid>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0" Content="Sniffed Source" />
             <Label Grid.Column="1" Name="sourceLbl" Content="" Background="AliceBlue" Width="Auto"/>
-            <Button Grid.Column="2" Content="Browse" Click="browseClick"/>
+            <Button Name="browseBtn" Grid.Column="2" Content="Browse" Click="browseClick"/>
         </Grid>
-        <ScrollViewer Grid.Row="2" >
+        <ScrollViewer Grid.Row="3" >
             <TextBlock Name="spiData" Height="Auto">
             </TextBlock>
         </ScrollViewer>
-        <Button Name="saveAsBtn" Grid.Row="3" Content="Save As" Click="saveAsClick" IsEnabled="false"/>
+        <Grid Grid.Row="4">
+        <Rectangle Name="progressBar"  Height="20" HorizontalAlignment="Left" Width="0" Fill="Green" />
+            <Label Name="progressLbl" FontSize="12" HorizontalAlignment="Right" Content="0" />
+            </Grid>
+        <Button Name="saveAsBtn" Grid.Row="5" Content="Save As" Click="saveAsClick" IsEnabled="false"/>
     </Grid>
 </Window>

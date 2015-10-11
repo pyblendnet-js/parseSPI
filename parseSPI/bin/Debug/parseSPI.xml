@@ -38,9 +38,11 @@ Application
 </member><member name="T:parseSPI.MainWindow">
 	<summary>
  SPI Sniffing Microcontroller Protocol Parser by Robert Parker (c)2015
+ See https://github.com/pyblendnet-js/parseSPI
  Uses the output captured by version 3.0 of Bus Pirate hardware and BusPirate.SPIsniffer.v0.3 executeable.
  Please see http://dangerousprototypes.com/docs/Bus_Pirate
- Output captured with console command SPIsniffer -d COM9 -r 1 &gt; raw.txt
+ Output captured either with BusPirate.SPIsniffer.v0.3 executeable using console  command SPIsniffer -d COM9 -r 1 &gt; raw.txt
+ Or with RealTermBusPirateSniff.exe (see https://github.com/pyblendnet-js/RealTermBusPirateSniff )
  </summary>
 	<remarks></remarks>
 </member><member name="P:parseSPI.My.MyWpfExtension.Application">
