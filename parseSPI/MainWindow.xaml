@@ -26,6 +26,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0" Content="Capture Type:" />
             <ComboBox Name="typCombo" Grid.Column="1" SelectionChanged="sourceTypeChange" SelectedIndex="1">
@@ -34,6 +35,7 @@
                     <ComboBoxItem Content="RealTerm RawHex (e.g. RealTermBusPirateSniff.exe)" />
                 </ComboBox.Items>
             </ComboBox>
+            <CheckBox Grid.Column="2" Name="showPacketsChkBox" Content="Show Packets" />
         </Grid>
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
@@ -43,7 +45,7 @@
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0" Content="Sniffed Source" />
             <Label Grid.Column="1" Name="sourceLbl" Content="" Background="AliceBlue" Width="Auto"/>
-            <Button Name="browseBtn" Grid.Column="2" Content="Browse" Click="browseClick"/>
+            <Button Name="browseBtn" Grid.Column="2" Content="Browse And Parse" Click="browseClick"/>
         </Grid>
         <ScrollViewer Grid.Row="3" >
             <TextBlock Name="spiData" Height="Auto">
