@@ -14,8 +14,9 @@
   <command Mnemonic="W_REGISTER" Binary="20" Mask="1F" MinSend="1" MaxSend="11">
     <field Name="REGISTER ADDRESS" Mask="1F" Map="register_bank"/>
   </command>
-  <command Mnemonic="R_RX_PAYLOAD" Binary="61" MinReply="1" MaxReply="32"/>
-  <command Mnemonic="W_TX_PAYLOAD" Binary="A0" MinSend="1" MaxSend="32"/>
+  <!-- rx width can be set in the RX_PW_P1 register be can actually be much more complicated -->
+  <command Mnemonic="R_RX_PAYLOAD" Binary="61" MinReply="1" MaxReply="32" Bytes="rx_width"/>
+  <command Mnemonic="W_TX_PAYLOAD" Binary="A0" MinSend="1" MaxSend="32" Bytes="rx_width"/>
   <command Mnemonic="FLUSH_TX" Binary="E1" MinSend="1" MaxSend="1"/>
   <command Mnemonic="FLUSH_RX" Binary="E2" MinSend="1" MaxSend="1"/>
   <command Mnemonic="REUSE_TX_PL" Binary="E3"/>
@@ -24,7 +25,7 @@
   <command Mnemonic="R_RX_PL_WID" Binary="60" MinReply="1"/>
   <command Mnemonic="W_ACK_PAYLOAD" Binary="A8" Mask="07" MinReply="1" MaxReply="32">
     <field Name="PIPE" Mask="07" />
-  </command>  
+  </command>
   <command Mnemonic="W_ACK_PAYLOAD" Binary="A8" Mask="07" MinReply="1" MaxReply="32"/>
   <command Mnemonic="NOP" Binary="FF"/>
 
@@ -43,13 +44,31 @@
     <loc Mnemonic="EN_RXADDR" Address="02" />
     <loc Mnemonic="SETUP_AW" Address="03" >
       <bit Mnemonic="AW" Mask="03" Variable="reg_width" Remap="0,3,4,5"/>
-    </loc>  
-    <loc Mnemonic="SETUP_RETR" Address="04" />
+    </loc>
+    <loc Mnemonic="SETUP_RETR" Address="04">
+      <bit Mnemonic="ARD" Mask="40"/>
+      <bit Mnemonic="ARC" Mask="40"/>
+    </loc>
     <loc Mnemonic="RF_CH" Address="05" />
-    <loc Mnemonic="RF_SETUP" Address="06" />
-    <loc Mnemonic="STATUS" Address="07" />
-    <loc Mnemonic="OBSERVE_TX" Address="08" />
+    <loc Mnemonic="RF_SETUP" Address="06">
+      <bit Mnemonic="RF_DR" Mask="08"/>
+      <bit Mnemonic="RF_PWR" Mask="06"/>
+      <bit Mnemonic="LNA_HCURR" Mask="1"/>
+    </loc>
+    <loc Mnemonic="STATUS" Address="07">
+      <bit Mnemonic="RBANK" Mask="80"/>
+      <bit Mnemonic="RX_DR" Mask="40"/>
+      <bit Mnemonic="TX_DS" Mask="20"/>
+      <bit Mnemonic="MAX_RT" Mask="10"/>
+      <bit Mnemonic="RX_P_NO" Mask="0E"/>
+      <bit Mnemonic="TX_FULL" Mask="01"/>
+    </loc>
+    <loc Mnemonic="OBSERVE_TX" Address="08">
+      <bit Mnemonic="PLOS_CNT" Mask="F0"/>
+      <bit Mnemonic="ARC_CNT" Mask="0F"/>
+    </loc>
     <loc Mnemonic="CD" Address="09" />
+    <!-- Note that follwing two Rx addresses and the Tx address are wider than the rest which use the RX_ADDR_P1 high bits-->
     <loc Mnemonic="RX_ADDR_P0" Address="0A" Bytes="reg_width" />
     <loc Mnemonic="RX_ADDR_P1" Address="0B" Bytes="reg_width" />
     <loc Mnemonic="RX_ADDR_P2" Address="0C" Bytes="1" />
@@ -57,7 +76,8 @@
     <loc Mnemonic="RX_ADDR_P4" Address="0E" Bytes="1" />
     <loc Mnemonic="RX_ADDR_P5" Address="0F" Bytes="1" />
     <loc Mnemonic="TX_ADDR" Address="10"  Bytes="reg_width"/>
-    <loc Mnemonic="RX_PW_P0" Address="11" />
+    <loc Mnemonic="RX_PW_P0" Address="11" Variable="rx_width"/>
+    <!-- we'll just assume for the moment that all comms use 16 bits otherwise it will be very messy-->
     <loc Mnemonic="RX_PW_P1" Address="12" />
     <loc Mnemonic="RX_PW_P2" Address="13" />
     <loc Mnemonic="RX_PW_P3" Address="14" />

@@ -133,6 +133,8 @@ Class MainWindow
         showPackets = showPacketsChkBox.IsChecked
         scanBuffer = hexcode
         scanPos = 0
+        packetRepeat = 0
+        replyRepeat = 0
         scanText = ""
         spiData.Text = ""
         dataSync = False
@@ -212,6 +214,7 @@ Class MainWindow
                             If showPackets Then
                                 If packetRepeat > 0 Then
                                     scanText &= "Last pack repeated " & packetRepeat.ToString() & vbLf
+                                    packetRepeat = 0
                                 End If
                                 scanText &= packetText
                             End If
@@ -312,8 +315,8 @@ Class MainWindow
                                     human &= ","
                                 End If
                                 human &= f.Name & "="   'field name
-                                Dim mf As Long = 0
-                                Dim ff As Long = 0
+                                Dim mf As UInt64 = 0
+                                Dim ff As UInt64 = 0
                                 If f.Mask Is Nothing Then
                                     errorMsg("Command " & cmd.Name & " Field error", "Field " & f.Name & " has no bit mask")
                                     Return "FIELD ERROR"
@@ -376,7 +379,25 @@ Class MainWindow
                         If cmd.minReply > 0 Then
                             Dim reply As String = ""
                             If bytes = 0 Then
-                                bytes = cmd.minReply
+                                If cmd.bytes.Length > 0 Then
+                                    If variables.Keys.Contains(cmd.bytes) Then
+                                        bytes = variables(cmd.bytes).Number
+                                    Else
+                                        While True
+                                            Dim nm As String = InputBox("Enter number of bytes for " & cmd.bytes)
+                                            Try
+                                                bytes = Integer.Parse(nm)
+                                                Exit While
+                                            Catch ex As Exception
+                                                MsgBox("Must be a number between:" & cmd.minSend & " and " & cmd.maxSend)
+                                            End Try
+                                        End While
+                                        variables(cmd.bytes) = New variableClass
+                                        variables(cmd.bytes).Number = bytes
+                                    End If
+                                Else
+                                    bytes = cmd.minReply  'so use command minimum reply
+                                End If
                             End If
                             If cmd.maxReply > 0 And bytes > cmd.maxReply Then
                                 errorMsg("ExceedMaxReply", "Bytes exceed max reply bytes for " & cmd.Name)
@@ -387,13 +408,38 @@ Class MainWindow
                                     human &= " " & str_cmd_pos & " " & start_of_command & " unexpected end of packet"
                                     Return human
                                 End If
-                                reply = Hex(sb(oi)) + reply
+                                reply = printHex(sb(oi)) + reply
                                 offset += 1
                             Next
                             human &= "R= 0x" & reply
+                            If loc IsNot Nothing Then
+                                If loc.bits IsNot Nothing Then
+                                    If loc.bits.Count > 0 Then
+                                        human &= parseBits(loc.bits, reply)
+                                    End If
+                                End If
+                            End If
                         ElseIf cmd.minSend > 0 Then   'this is a write style command
                             If bytes = 0 Then  'number of bytes has not been set by the register location
-                                bytes = cmd.minSend  'so use command minimum send
+                                If cmd.bytes.Length > 0 Then
+                                    If variables.Keys.Contains(cmd.bytes) Then
+                                        bytes = variables(cmd.bytes).Number
+                                    Else
+                                        While True
+                                            Dim nm As String = InputBox("Enter number of bytes for " & cmd.bytes)
+                                            Try
+                                                bytes = Integer.Parse(nm)
+                                                Exit While
+                                            Catch ex As Exception
+                                                MsgBox("Must be a number between:" & cmd.minSend & " and " & cmd.maxSend)
+                                            End Try
+                                        End While
+                                        variables(cmd.bytes) = New variableClass
+                                        variables(cmd.bytes).Number = bytes
+                                    End If
+                                Else
+                                    bytes = cmd.minSend  'so use command minimum send
+                                End If
                             End If
                             If cmd.maxSend > 0 And bytes > cmd.maxSend Then
                                 errorMsg("ExceedMaxSend", "Bytes exceed max send bytes for " & cmd.Name)
@@ -408,7 +454,7 @@ Class MainWindow
                                     Return human
                                 End If
                                 send_bytes.Add(mb(oi))
-                                send_hex = Hex(mb(oi)) & send_hex
+                                send_hex = printHex(mb(oi)) & send_hex
                                 offset += 1
                             Next
                             'if this is a register of interest the instruction descriptions may had bit fields to examine
@@ -416,8 +462,8 @@ Class MainWindow
                                 If loc.bits IsNot Nothing Then
                                     For Each b As bitClass In loc.bits
                                         'gather the bit field mask into one unsigned long value
-                                        Dim bit_mask As ULong = 0
-                                        Dim v As ULong = 0
+                                        Dim bit_mask As UInt64 = 0
+                                        Dim v As UInt64 = 0
                                         Dim bj As Integer = 0
                                         For bi As Integer = b.Mask.Count - 1 To 0 Step -1  'lsb first
                                             If b.Mask(bi) = 0 Then
@@ -452,35 +498,42 @@ Class MainWindow
                             End If
                             'show the value being sent
                             human &= "W= 0x" & send_hex
-                        End If
-                        'does this command have a script to activate
-                        If cmd.script.Length > 0 Then
-                            Try
-                                Dim svs As String() = cmd.script.Split()
-                                Dim si As Integer = 0
-                                While si < svs.Count
-                                    Select Case svs(si).ToLower()
-                                        Case "toggle"  'toggle the following variable between two preset values
-                                            'this command references a variable
-                                            si += 1
-                                            Dim vi = svs(si)
-                                            Dim v = variables(vi)
-                                            If v.value = v.values(0) Then
-                                                v.value = v.values(1)
-                                            Else
-                                                v.value = v.values(0)
-                                            End If
-                                    End Select
-                                    si += 1
-                                End While
-                            Catch
-                                errorMsg("Script Error", "Error in using script:" & cmd.script)
-                            End Try
-                        End If
-                        offset += cmd.Binary.Count
-                        Exit For
-                        'Else
-                        '    Console.WriteLine("2nd byte")
+                            If loc IsNot Nothing Then
+                                If loc.bits IsNot Nothing Then
+                                    If loc.bits.Count > 0 Then
+                                        human &= parseBits(loc.bits, send_hex)
+                                    End If
+                                End If
+                            End If
+                            End If
+                            'does this command have a script to activate
+                            If cmd.script.Length > 0 Then
+                                Try
+                                    Dim svs As String() = cmd.script.Split()
+                                    Dim si As Integer = 0
+                                    While si < svs.Count
+                                        Select Case svs(si).ToLower()
+                                            Case "toggle"  'toggle the following variable between two preset values
+                                                'this command references a variable
+                                                si += 1
+                                                Dim vi = svs(si)
+                                                Dim v = variables(vi)
+                                                If v.value = v.values(0) Then
+                                                    v.value = v.values(1)
+                                                Else
+                                                    v.value = v.values(0)
+                                                End If
+                                        End Select
+                                        si += 1
+                                    End While
+                                Catch
+                                    errorMsg("Script Error", "Error in using script:" & cmd.script)
+                                End Try
+                            End If
+                            offset += cmd.Binary.Count
+                            Exit For
+                            'Else
+                            '    Console.WriteLine("2nd byte")
                     End If
                 Next
                 If match_found Then
@@ -498,16 +551,56 @@ Class MainWindow
         Return human
     End Function
 
+    Private Function printHex(ByVal nr As Byte)
+        Dim h As String = Hex(nr)
+        If h.Length < 2 Then
+            h = "0" & h
+        End If
+        Return h
+    End Function
+
+    Private Function buildMask(ByVal ms As Byte()) As UInt64
+        Dim mask As UInt64 = 0
+        For mi As Integer = 0 To ms.Count - 1
+            If mi > 8 Then
+                Return mask
+            End If
+            mask = mask Or ms(mi) << (8 * mi)
+        Next
+        Return mask
+    End Function
+
+    Private Function getFieldValue(ByVal nr As UInt64, ByVal ms As Byte()) As UInt64
+        Dim mask As Long = buildMask(ms)
+        Dim v As UInt64 = nr And mask
+        While (mask And 1) = 0
+            v = v >> 1
+            mask = mask >> 1
+        End While
+        Return v
+    End Function
+
+    Private Function parseBits(ByVal bits As bitClass(), ByVal h As String)
+        Dim nr = UInt64.Parse(h, Globalization.NumberStyles.HexNumber)
+        Dim rtn As String = " ["
+        For Each b As bitClass In bits
+            Dim v As UInt64 = getFieldValue(nr, b.Mask)
+            rtn &= b.Name & "=" & v & ","
+        Next
+        rtn = rtn.Substring(0, rtn.Length - 1) & "]"
+        Return rtn
+    End Function
+
     Class variableClass
         Public name As String
         Public value As String = ""
         Public values As String() = Nothing
-        Public Number As ULong = 0
+        Public Number As UInt64 = 0
     End Class
 
     Private variables As New Dictionary(Of String, variableClass)
 
-    Private Sub setVariableNumber(ByVal name As String, ByVal number As ULong)
+    Private Sub setVariableNumber(ByVal name As String, ByVal number As UInt64)
         If Not variables.Keys.Contains(name) Then
             Dim var As New variableClass
             var.name = name
@@ -532,6 +625,7 @@ Class MainWindow
         Public maxReply As Integer = 0
         Public minSend As Integer = 0
         Public maxSend As Integer = 0
+        Public bytes As String = ""  'can be a variable to set the number of bytes
         Public script As String = ""
     End Class
 
@@ -585,7 +679,7 @@ Class MainWindow
                     Case "values"
                         var.values = attr.Value.Split(",")
                     Case "number"
-                        var.Number = ULong.Parse(attr.Value)
+                        var.Number = UInt64.Parse(attr.Value)
                 End Select
             Next
             variables(var.name) = var
@@ -610,6 +704,8 @@ Class MainWindow
                         cmd.minSend = Integer.Parse(attr.Value)
                     Case "maxsend"
                         cmd.maxSend = Integer.Parse(attr.Value)
+                    Case "bytes"
+                        cmd.bytes = attr.Value  'can be a variable
                     Case "script"
                         cmd.script = attr.Value
                 End Select
