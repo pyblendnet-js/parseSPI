@@ -1,7 +1,8 @@
 <html>
 <body>
 <h1>parseSPI</h1>
-Converts raw hex code from SPI bus sniffing into slave register settings and data flow
+<p>Converts raw hex code from SPI bus sniffing into slave register settings and data flow.</p>
+<img src="ScreenShot.png">
 <h2>Introduction</h2>
 <p>The hex decimal codes obtains from sniffing the SPI bus between a microcontroller and a slave device need to
 be interpreted against the register settings for the slave device.  This is often complex, tedious and often erroneous.
@@ -13,12 +14,19 @@ transceiver board and retransmit altered SPI data to the helicopters controller 
 <p>Articles such as <a href="http://dzlsevilgeniuslair.blogspot.dk/2013/11/more-toy-quadcopter-hacking.html">
 Controlling toy quadcopter(s) with Arduino </a> showed that this might be even easier than I had thought - or at least not impossible.</p>
 <p>The transceiver turned out to be a BK2421 (see xml file in debug directory) and I measured the SPI clock rate at only 100KHz.  This was within the ability of the <a href="http://dangerousprototypes.com/docs/Bus_Pirate">Bus Pirate</a> which can sniff to 10Mhz.  I purchased the V3 SparkFun version from OceanControls and have been very pleased with it - I hope SparkFun are generous with their contributions to it's developers.</p>
-<p>So far I have been able to sniff and interpret the intialisation sequence and though transceiver operation is still a bit of a mystery, I am hopeful to be able to interpret the transmitter actions as they arrive.</p>
+<p>So far I have been able to sniff and interpret the intialisation sequence, the binding process and the operation of 4 of the 5 channels.  Though transceiver operation is still a bit of a mystery, I am hopeful to be able to insert a microcontroller to intercept the transmissions and so give these helicopters some drone abilities.</p>
 <h2>Installation and Description</h2>
 <p>To use the code, only the contents of the debug directory are required.</p>
-<p>Run the parseSPI.exe.  The BK2421 is the only instruction set at the moment and is selected by default.  Browse to the
-raw output sniffed (I used the Bus Pirate binary sniffer with console command "SPIsniffer -d COM9 -r 1 > raw.txt") and
-parsing will commence.  A button at the bottom will then be enabled allowing you to save the output.</p>
+<p>Run the parseSPI.exe.  The BK2421 is the only instruction set at the moment and is selected by default.
+   There are two types of source types that program will accept:</p>
+   <ul>
+     <li><b>BusPirate.SPIsniffer.v0.3</b> - Originally I used the Bus Pirate binary sniffer (unzips as BusPirate.SPIsniffer.v0.3) with the console command "SPIsniffer -d COM9 -r 1 > raw.txt" and this was okay to catch the initialisation sequence in 6kB before the buffers were over run due to the slow 115200 baud rate on the USB connection.  The output from this sniffer was strangely echoed, so this parser program only looks at every second byte.</li>
+     <li><b>RealTerm</b> - following the guidelines from Homens on <a href="http://dangerousprototypes.com/forum/viewtopic.php?f=4&t=6765&p=59413&hilit=SPIsniffer#p59413">this</a> forum entry, I discovered that I could use a visual basic program to open Real Term,
+     change the USB baudrate to 800KHz and use RealTerm to capture the data continuously to file.
+     In this case, there is no echoing and only a 0x01 byte at the start to begin the normal BusPirate protocol. You can find my visual basic project to automate the capture <a href="http://github.com/pyblendnet-js/RealTermBusPirateSniff">here</a>.</li>
+  </ul>
+<p>So, select the source type from RealTerm RawHex (the default) or BusPirate.SPIsniffer.v0.3 and then browse to the captured file.  Parsing will commence immediately but can be cancelled.  A button at the bottom will then be enabled allowing you to save the output.</p>
+<p>If you wished to see the raw data packets imbedded within the parsed text, there is a check box to be selected before the source is chosen.</p>
 <h2>Instruction Sets</h2>
 <p>See the BK2421.xml file for an example of how to generate an instruction set for a different slave device, or to fix error sin this one.  The following description should help to understand my framework.</p>
 <p>There are three main entries:</p>
@@ -36,7 +44,7 @@ parsing will commence.  A button at the bottom will then be enabled allowing you
 <ul>
 <li>Mnemonic or Name - output to the parsed data.
 <li>Binary - a comma separated list of hex byte values to match against bits in the sniffed command to test.</li>
-<li>Mask - a comma separated list of hex byte values to exclude from the Binary bits.</li>  
+<li>Mask - a comma separated list of hex byte values to exclude from the Binary bits.</li>
 <li>MinReply - the minimum number of bytes that the slave should return.  Also used as the actual number of the
 bytes if no other setting is made such as from register size. When greater than 0 tells parser that this is a
 read command. Data to register is prefixed with <i><b>R=</b></i></li>
@@ -73,7 +81,7 @@ This can be a variable name as it is in this case as the BK2421 has two register
 <p><pre><i><b>
 &lt;loc Mnemonic="SETUP_AW" Address="03" >
   &lt;bit Mnemonic="AW" Mask="03" Variable="reg_width" Remap="0,3,4,5"/>
-&lt;/loc>  
+&lt;/loc>
 </b></i></pre></p>
 <p>This is the SETUP_AW register in Bank1 on the BK2421. Attributes are:</p>
 <ul>
