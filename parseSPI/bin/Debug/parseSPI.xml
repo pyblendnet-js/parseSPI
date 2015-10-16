@@ -10,10 +10,6 @@ parseSPI
 	<summary>
 InitializeComponent
 </summary>
-</member><member name="T:parseSPI.MainWindow">
-	<summary>
-MainWindow
-</summary>
 </member><member name="M:parseSPI.Application.InitializeComponent">
 	<summary>
 InitializeComponent

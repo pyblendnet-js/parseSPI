@@ -138,6 +138,8 @@ Class MainWindow
         scanText = ""
         spiData.Text = ""
         dataSync = False
+        MOSI = False
+        MISO = False
         scanWorker = New BackgroundWorker()
         scanWorker.WorkerReportsProgress = True
         scanWorker.WorkerSupportsCancellation = True
@@ -173,7 +175,7 @@ Class MainWindow
                     packetText &= b & " ("
                     master_bytes.Add(Byte.Parse(b, Globalization.NumberStyles.HexNumber))
                     MOSI = False
-                    MISO = True
+                    MISO = True  'next byte is MISO
                 ElseIf MISO Then
                     packetText &= b & ") "
                     packet_count += 1
@@ -183,83 +185,84 @@ Class MainWindow
                     End If
                     slave_bytes.Add(Byte.Parse(b, Globalization.NumberStyles.HexNumber))
                     MISO = False
-                End If
-                Select Case b
-                    Case "5B"
-                        'packetText &= "Packet Start" & vbLf
-                        text_pos = scanText.Length
-                        packet = True
-                        master_bytes = left_over_master_bytes
-                        slave_bytes = left_over_slave_bytes
-                    Case "5C"
-                        MOSI = True
-                    Case "5D"
-                        'While (scanText.Length < text_pos + 40)
-                        'scanText &= " "
-                        'End While
-                        Dim mb As Byte() = master_bytes.ToArray()
-                        Dim sb As Byte() = slave_bytes.ToArray()
-                        Dim same_packet As Boolean = False
-                        If mb.Length = pmb.Length And mb.Length = sb.Length Then
-                            same_packet = True
-                            For mi As Integer = 0 To mb.Length - 1
-                                If mb(mi) <> pmb(mi) Or sb(mi) <> psb(mi) Then
-                                    same_packet = False
-                                End If
-                            Next
-                        End If
-                        If showPackets And same_packet Then
-                            packetRepeat += 1
-                        Else
-                            If showPackets Then
-                                If packetRepeat > 0 Then
-                                    scanText &= "Last pack repeated " & packetRepeat.ToString() & vbLf
-                                    packetRepeat = 0
-                                End If
-                                scanText &= packetText
-                            End If
-                            Dim rply As String = parseSpiPacket(mb, sb)
-                            If rply.EndsWith("unexpected end of packet") Then
-                                Dim rs As String() = rply.Split(" ")
-                                Dim pos_packet As Integer = Integer.Parse(rs(rs.Count - 5))
-                                left_over_master_bytes = master_bytes.GetRange(pos_packet, master_bytes.Count - pos_packet)
-                                left_over_slave_bytes = slave_bytes.GetRange(pos_packet, slave_bytes.Count - pos_packet)
-                                Dim pos_string As Integer = Integer.Parse(rs(rs.Count - 6))
-                                rply = rply.Substring(0, pos_string)
-                            Else
-                                left_over_master_bytes.Clear()
-                                left_over_slave_bytes.Clear()
-                            End If
-                            If showPackets Then
-                                scanText &= rply & vbLf
-                            Else
-                                Dim cmd_replies As String() = rply.Split(vbLf)
-                                For Each cr As String In cmd_replies
-                                    If cr.Length = 0 Or cr = vbTab Then
-                                        Continue For
+                Else
+                    Select Case b
+                        Case "5B"
+                            'packetText &= "Packet Start" & vbLf
+                            text_pos = scanText.Length
+                            packet = True
+                            master_bytes = left_over_master_bytes
+                            slave_bytes = left_over_slave_bytes
+                        Case "5C"
+                            MOSI = True  'next byte is mosi
+                        Case "5D"
+                            'While (scanText.Length < text_pos + 40)
+                            'scanText &= " "
+                            'End While
+                            Dim mb As Byte() = master_bytes.ToArray()
+                            Dim sb As Byte() = slave_bytes.ToArray()
+                            Dim same_packet As Boolean = False
+                            If mb.Length = pmb.Length And mb.Length = sb.Length Then
+                                same_packet = True
+                                For mi As Integer = 0 To mb.Length - 1
+                                    If mb(mi) <> pmb(mi) Or sb(mi) <> psb(mi) Then
+                                        same_packet = False
                                     End If
-                                    If Not showPackets And cr = lastCmdReply Then
-                                        replyRepeat += 1
-                                    Else
-                                        If replyRepeat > 0 Then
-                                            scanText &= " Last line repeated " & replyRepeat & " times " & vbLf
-                                        End If
-                                        replyRepeat = 0
-                                        scanText &= cr & vbLf
-                                        lastCmdReply = cr
-                                    End If
-                                    ' need to be able to join incomplete packets and re parse
-                                    'scanText &= vbLf ' & "Packet End" & vbLf
-                                    packetRepeat = 0
                                 Next
                             End If
-                        End If
-                        pmb = mb
-                        psb = sb
-                        packet = False
-                        packet_count = 0
-                        packetText = ""
-                End Select
+                            If showPackets And same_packet Then
+                                packetRepeat += 1
+                            Else
+                                If showPackets Then
+                                    If packetRepeat > 0 Then
+                                        scanText &= "Last pack repeated " & packetRepeat.ToString() & vbLf
+                                        packetRepeat = 0
+                                    End If
+                                    scanText &= packetText
+                                End If
+                                Dim rply As String = parseSpiPacket(mb, sb)
+                                If rply.EndsWith("unexpected end of packet") Then
+                                    Dim rs As String() = rply.Split(" ")
+                                    Dim pos_packet As Integer = Integer.Parse(rs(rs.Count - 5))
+                                    left_over_master_bytes = master_bytes.GetRange(pos_packet, master_bytes.Count - pos_packet)
+                                    left_over_slave_bytes = slave_bytes.GetRange(pos_packet, slave_bytes.Count - pos_packet)
+                                    Dim pos_string As Integer = Integer.Parse(rs(rs.Count - 6))
+                                    rply = rply.Substring(0, pos_string)
+                                Else
+                                    left_over_master_bytes.Clear()
+                                    left_over_slave_bytes.Clear()
+                                End If
+                                If showPackets Then
+                                    scanText &= rply & vbLf
+                                Else
+                                    Dim cmd_replies As String() = rply.Split(vbLf)
+                                    For Each cr As String In cmd_replies
+                                        If cr.Length = 0 Or cr = vbTab Then
+                                            Continue For
+                                        End If
+                                        If Not showPackets And cr = lastCmdReply Then
+                                            replyRepeat += 1
+                                        Else
+                                            If replyRepeat > 0 Then
+                                                scanText &= " Last line repeated " & replyRepeat & " times " & vbLf
+                                            End If
+                                            replyRepeat = 0
+                                            scanText &= cr & vbLf
+                                            lastCmdReply = cr
+                                        End If
+                                        ' need to be able to join incomplete packets and re parse
+                                        'scanText &= vbLf ' & "Packet End" & vbLf
+                                        packetRepeat = 0
+                                    Next
+                                End If
+                            End If
+                            pmb = mb
+                            psb = sb
+                            packet = False
+                            packet_count = 0
+                            packetText = ""
+                    End Select
+                End If
             End If
             'Catch ex As Exception
             ' scanText &= "Exception:" & ex.ToString() & vbLf & "  parsing byte " & i & " = " & scanBuffer(i)
